@@ -22,7 +22,7 @@ class NASADataLoader:
     """
     
     def __init__(self):
-        self.api_key = os.environ.get('NASA_API_KEY')
+        self.api_key = os.environ.get('NASA_API_KEY')  # Fixed: Use environment variable name
         self.base_url = "https://exoplanetarchive.ipac.caltech.edu"
         
     async def load_kepler_confirmed_planets(self, limit: int = 2000) -> Optional[pd.DataFrame]:
@@ -30,24 +30,19 @@ class NASADataLoader:
         try:
             logger.info(f"Loading Kepler confirmed planets (limit: {limit})")
             
-            # Query NASA Exoplanet Archive for Kepler confirmed planets
-            url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
+            query = """
+            SELECT kepler_name, hostname, pl_letter, pl_rade, pl_masse, pl_orbper, pl_orbsmax,
+                   pl_orbeccen, pl_eqt, st_rad, st_mass, st_teff, st_met, st_logg, sy_dist,
+                   disc_year, disc_facility, disc_telescope, disc_instrument
+            FROM ps
+            WHERE disc_facility LIKE '%Kepler%' AND pl_name IS NOT NULL
+            ORDER BY kepler_name
+            """
 
-query = """
-SELECT kepler_name, hostname, pl_letter, pl_rade, pl_masse, pl_orbper, pl_orbsmax,
-       pl_orbeccen, pl_eqt, st_rad, st_mass, st_teff, st_met, st_logg, sy_dist,
-       disc_year, disc_facility, disc_telescope, disc_instrument
-FROM ps
-WHERE disc_facility LIKE '%Kepler%' AND pl_name IS NOT NULL
-ORDER BY kepler_name
-"""
-
-params = {
-    "query": query,
-    "format": "csv"
-}
-
-response = requests.get(url, params=params)
+            query_params = {
+                "query": query,
+                "format": "csv"
+            }
             
             if limit:
                 query_params['limit'] = str(limit)
@@ -85,12 +80,17 @@ response = requests.get(url, params=params)
         try:
             logger.info(f"Loading Kepler KOI cumulative data (limit: {limit})")
             
+            query = """
+            SELECT kepoi_name, kepler_name, koi_disposition, koi_prad, koi_period, koi_sma, 
+                   koi_eccen, koi_teq, koi_srad, koi_smass, koi_steff, koi_slogg, koi_smet
+            FROM cumulative
+            WHERE koi_disposition = 'CONFIRMED' AND kepoi_name IS NOT NULL
+            ORDER BY kepoi_name
+            """
+            
             query_params = {
-                'table': 'cumulative',
-                'select': 'kepoi_name,kepler_name,koi_disposition,koi_prad,koi_period,koi_sma,koi_eccen,koi_teq,koi_srad,koi_smass,koi_steff,koi_slogg,koi_smet',
-                'where': "koi_disposition = 'CONFIRMED' and kepoi_name is not null",
-                'order': 'kepoi_name',
-                'format': 'csv'
+                "query": query,
+                "format": "csv"
             }
             
             if limit:
@@ -142,12 +142,17 @@ response = requests.get(url, params=params)
         try:
             logger.info(f"Loading TESS TOI data (limit: {limit})")
             
+            query = """
+            SELECT toi_id, tid, toi_disposition, toi_prad, toi_period, toi_sma, 
+                   toi_ecc, toi_teq, toi_srad, toi_smass, toi_steff, toi_slogg, toi_smet
+            FROM toi
+            WHERE toi_disposition LIKE '%PC%' AND toi_id IS NOT NULL
+            ORDER BY toi_id
+            """
+            
             query_params = {
-                'table': 'toi',
-                'select': 'toi_id,tid,toi_disposition,toi_prad,toi_period,toi_sma,toi_ecc,toi_teq,toi_srad,toi_smass,toi_steff,toi_slogg,toi_smet',
-                'where': "toi_disposition like '%PC%' and toi_id is not null",
-                'order': 'toi_id',
-                'format': 'csv'
+                "query": query,
+                "format": "csv"
             }
             
             if limit:
@@ -199,12 +204,18 @@ response = requests.get(url, params=params)
         try:
             logger.info(f"Loading planetary systems data (limit: {limit})")
             
+            query = """
+            SELECT pl_name, hostname, pl_letter, pl_rade, pl_masse, pl_orbper, 
+                   pl_orbsmax, pl_orbeccen, pl_eqt, st_rad, st_mass, st_teff, 
+                   st_met, st_logg, sy_dist, disc_year, disc_facility
+            FROM pscomppars
+            WHERE pl_name IS NOT NULL AND default_flag = 1
+            ORDER BY pl_name
+            """
+            
             query_params = {
-                'table': 'pscomppars',
-                'select': 'pl_name,hostname,pl_letter,pl_rade,pl_masse,pl_orbper,pl_orbsmax,pl_orbeccen,pl_eqt,st_rad,st_mass,st_teff,st_met,st_logg,sy_dist,disc_year,disc_facility',
-                'where': "pl_name is not null and default_flag = 1",
-                'order': 'pl_name',
-                'format': 'csv'
+                "query": query,
+                "format": "csv"
             }
             
             if limit:
@@ -233,6 +244,38 @@ response = requests.get(url, params=params)
         except Exception as e:
             logger.error(f"Error loading planetary systems: {str(e)}")
             return None
+    
+    async def load_all_data(self, limit: int = 2000) -> pd.DataFrame:
+        """Load all available data sources and combine them."""
+        try:
+            tasks = [
+                self.load_kepler_confirmed_planets(limit),
+                self.load_kepler_koi_cumulative(limit),
+                self.load_tess_toi(limit),
+                self.load_planetary_systems(limit)
+            ]
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Filter out None results and exceptions
+            valid_datasets = []
+            for result in results:
+                if isinstance(result, pd.DataFrame) and not result.empty:
+                    valid_datasets.append(result)
+                elif isinstance(result, Exception):
+                    logger.error(f"Error in data loading task: {result}")
+            
+            if not valid_datasets:
+                logger.error("No data could be loaded from any source")
+                return pd.DataFrame()
+            
+            combined_df = self.combine_datasets(valid_datasets)
+            logger.info(f"Successfully combined {len(combined_df)} exoplanets from {len(valid_datasets)} sources")
+            return combined_df
+            
+        except Exception as e:
+            logger.error(f"Error loading all data: {str(e)}")
+            return pd.DataFrame()
     
     async def load_light_curve_data(self, target_name: str, mission: str = "TESS") -> Optional[Dict[str, Any]]:
         """Load light curve data for a specific target."""
@@ -373,7 +416,8 @@ response = requests.get(url, params=params)
             combined_df = pd.concat(datasets, ignore_index=True)
             
             # Remove duplicates based on planet name
-            combined_df = combined_df.drop_duplicates(subset=['pl_name'], keep='first')
+            if 'pl_name' in combined_df.columns:
+                combined_df = combined_df.drop_duplicates(subset=['pl_name'], keep='first')
             
             # Ensure required columns exist
             required_columns = [
