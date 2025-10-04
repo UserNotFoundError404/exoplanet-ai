@@ -12,7 +12,8 @@ from astroquery.mast import Observations
 from astropy.io import fits
 from astropy.time import Time
 from models import ExoplanetData, LightCurveData, TransitData
-
+from dotenv import load_dotenv
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 class NASADataLoader:
@@ -23,7 +24,7 @@ class NASADataLoader:
     
     def __init__(self):
         self.api_key = os.environ.get('NASA_API_KEY')  # Fixed: Use environment variable name
-        self.base_url = "https://exoplanetarchive.ipac.caltech.edu"
+        self.base_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
         
     async def load_kepler_confirmed_planets(self, limit: int = 2000) -> Optional[pd.DataFrame]:
         """Load confirmed Kepler planets from NASA Exoplanet Archive."""
@@ -49,30 +50,22 @@ class NASADataLoader:
             
             url = f"{self.base_url}/TAP/sync"
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=query_params) as response:
-                    if response.status == 200:
-                        content = await response.text()
-                        
-                        # Parse CSV content
-                        from io import StringIO
-                        df = pd.read_csv(StringIO(content), comment='#')
-                        
-                        # Clean and process data
-                        df = self._clean_planet_data(df)
-                        df['data_source'] = 'Kepler_Confirmed'
-                        
-                        # Classify exoplanet types
-                        df['exoplanet_type'] = df.apply(self._classify_exoplanet, axis=1)
-                        
-                        logger.info(f"Successfully loaded {len(df)} Kepler confirmed planets")
-                        return df
-                    else:
-                        logger.error(f"Failed to load Kepler data: HTTP {response.status}")
+    async def _fetch_tap(self, query: str, limit: int = 2000) -> Optional[pd.DataFrame]:
+    """Perform async TAP query and return DataFrame."""
+        try:
+            params = {"query": query.strip(), "format": "csv"}
+            if limit:
+                params["limit"] = str(limit)
+
+              async with aiohttp.ClientSession() as session:
+                async with session.get(self.base_url, params=params) as response:
+                    if response.status != 200:
+                        logger.error(f"TAP query failed: HTTP {response.status}")
                         return None
-                        
+                    text = await response.text()
+                    return pd.read_csv(StringIO(text), comment="#")
         except Exception as e:
-            logger.error(f"Error loading Kepler confirmed planets: {str(e)}")
+            logger.error(f"TAP query error: {str(e)}")
             return None
     
     async def load_kepler_koi_cumulative(self, limit: int = 2000) -> Optional[pd.DataFrame]:
