@@ -22,7 +22,7 @@ class NASADataLoader:
     """
     
     def __init__(self):
-        self.api_key = os.environ.get('NOHDfuLb7GCko1NsNZdbXeRNb14bwqZpkNgby8mt')
+        self.api_key = os.environ.get('NASA_API_KEY')
         self.base_url = "https://exoplanetarchive.ipac.caltech.edu"
         
     async def load_kepler_confirmed_planets(self, limit: int = 2000) -> Optional[pd.DataFrame]:
