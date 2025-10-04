@@ -23,14 +23,14 @@ class NASADataLoader:
     """
     
     def __init__(self):
-        self.api_key = os.environ.get('NASA_API_KEY')  # Fixed: Use environment variable name
+        self.api_key = os.environ.get('NASA_API_KEY')  # Use environment variable
         self.base_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
         
     async def load_kepler_confirmed_planets(self, limit: int = 2000) -> Optional[pd.DataFrame]:
         """Load confirmed Kepler planets from NASA Exoplanet Archive."""
         try:
             logger.info(f"Loading Kepler confirmed planets (limit: {limit})")
-            
+        
             query = """
             SELECT kepler_name, hostname, pl_letter, pl_rade, pl_masse, pl_orbper, pl_orbsmax,
                    pl_orbeccen, pl_eqt, st_rad, st_mass, st_teff, st_met, st_logg, sy_dist,
@@ -44,20 +44,39 @@ class NASADataLoader:
                 "query": query,
                 "format": "csv"
             }
-            
+        
             if limit:
                 query_params['limit'] = str(limit)
-            
-            url = f"{self.base_url}/TAP/sync"
-            
+        
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.base_url, params=query_params) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        df = pd.read_csv(StringIO(content), comment='#')
+                        # optional: clean/process data here
+                        return df
+                    else:
+                        logger.error(f"Failed to fetch data: HTTP {response.status}")
+                        return None
+
+        except aiohttp.ClientError as e:
+            logger.error(f"Network error while fetching Kepler planets: {e}")
+            return None
+        except pd.errors.ParserError as e:
+            logger.error(f"Error parsing CSV data: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            return None
+
     async def _fetch_tap(self, query: str, limit: int = 2000) -> Optional[pd.DataFrame]:
-    """Perform async TAP query and return DataFrame."""
+        """Perform async TAP query and return DataFrame."""
         try:
             params = {"query": query.strip(), "format": "csv"}
             if limit:
                 params["limit"] = str(limit)
 
-              async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:
                 async with session.get(self.base_url, params=params) as response:
                     if response.status != 200:
                         logger.error(f"TAP query failed: HTTP {response.status}")
