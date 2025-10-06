@@ -8,8 +8,7 @@ import MLTraining from './components/MLTraining';
 import Predictions from './components/Predictions';
 import Visualizations from './components/Visualizations';
 import LightCurves from './components/LightCurves';
-// (optional if you added TransitAnalysis.jsx)
-// import TransitAnalysis from './components/TransitAnalysis';
+import TransitAnalysis from './components/TransitAnalysis';
 
 import './App.css';
 
