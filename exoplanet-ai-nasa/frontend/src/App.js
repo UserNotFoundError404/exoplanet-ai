@@ -3,43 +3,15 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import DataLoading from './components/DataLoading';
+import DataAnalysis from './components/DataAnalysis';
+import MLTraining from './components/MLTraining';
+import Predictions from './components/Predictions';
+import Visualizations from './components/Visualizations';
+import LightCurves from './components/LightCurves';
+// (optional if you added TransitAnalysis.jsx)
+// import TransitAnalysis from './components/TransitAnalysis';
+
 import './App.css';
-
-// Placeholder components for other pages
-const DataAnalysis = () => (
-  <div className="bg-white rounded-lg border border-gray-200 p-6">
-    <h1 className="text-2xl font-bold text-gray-900 mb-4">Data Analysis</h1>
-    <p className="text-gray-600">Data analysis and exploration tools coming soon...</p>
-  </div>
-);
-
-const MLTraining = () => (
-  <div className="bg-white rounded-lg border border-gray-200 p-6">
-    <h1 className="text-2xl font-bold text-gray-900 mb-4">ML Training</h1>
-    <p className="text-gray-600">Machine learning model training interface coming soon...</p>
-  </div>
-);
-
-const Predictions = () => (
-  <div className="bg-white rounded-lg border border-gray-200 p-6">
-    <h1 className="text-2xl font-bold text-gray-900 mb-4">Predictions</h1>
-    <p className="text-gray-600">Exoplanet classification predictions coming soon...</p>
-  </div>
-);
-
-const Visualizations = () => (
-  <div className="bg-white rounded-lg border border-gray-200 p-6">
-    <h1 className="text-2xl font-bold text-gray-900 mb-4">Visualizations</h1>
-    <p className="text-gray-600">Interactive charts and visualizations coming soon...</p>
-  </div>
-);
-
-const LightCurves = () => (
-  <div className="bg-white rounded-lg border border-gray-200 p-6">
-    <h1 className="text-2xl font-bold text-gray-900 mb-4">Light Curves</h1>
-    <p className="text-gray-600">Light curve analysis and transit detection coming soon...</p>
-  </div>
-);
 
 function App() {
   return (
@@ -53,6 +25,8 @@ function App() {
           <Route path="predictions" element={<Predictions />} />
           <Route path="visualizations" element={<Visualizations />} />
           <Route path="light-curves" element={<LightCurves />} />
+          {/* Uncomment if you made TransitAnalysis */}
+          {/* <Route path="transit" element={<TransitAnalysis />} /> */}
         </Route>
       </Routes>
     </BrowserRouter>
