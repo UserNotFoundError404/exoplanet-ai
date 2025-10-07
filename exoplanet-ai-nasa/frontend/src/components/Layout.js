@@ -20,7 +20,8 @@ const Layout = () => {
     { path: '/ml-training', icon: Brain, label: 'ML Training', description: 'Train Models' },
     { path: '/predictions', icon: Telescope, label: 'Predictions', description: 'Classify Exoplanets' },
     { path: '/visualizations', icon: Globe2, label: 'Visualizations', description: 'Charts & Plots' },
-    { path: '/light-curves', icon: Orbit, label: 'Light Curves', description: 'Transit Analysis' }
+    { path: '/light-curves', icon: Activity, label: 'Light Curves', description: 'Stellar Brightness' },
+    { path: '/transit', icon: Orbit, label: 'Transit Analysis', description: 'Orbital Parameters' }
   ];
 
   return (

@@ -24,8 +24,7 @@ function App() {
           <Route path="predictions" element={<Predictions />} />
           <Route path="visualizations" element={<Visualizations />} />
           <Route path="light-curves" element={<LightCurves />} />
-          {/* Uncomment if you made TransitAnalysis */}
-          {/* <Route path="transit" element={<TransitAnalysis />} /> */}
+          <Route path="transit" element={<TransitAnalysis />} />
         </Route>
       </Routes>
     </BrowserRouter>

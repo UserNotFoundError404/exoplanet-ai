@@ -215,6 +215,44 @@ class NASADataLoader:
             logger.error(f"Error loading TESS confirmed planets: {e}")
             return None
 
+    async def load_tess_toi(self, limit: int = 2000) -> Optional[pd.DataFrame]:
+        """Load TESS Objects of Interest (TOI) from the TOI catalog."""
+        logger.info("Loading TESS Objects of Interest (TOI)...")
+        query = f"""
+        SELECT TOP {limit}
+            toi_id, tid, pl_name, ra, dec, pl_rade, pl_masse, pl_orbper, pl_orbsmax,
+            pl_orbeccen, pl_eqt, st_rad, st_mass, st_teff, st_met, st_logg, 
+            sy_dist, disc_year, disc_facility
+        FROM toi
+        WHERE toi_disposition LIKE '%PC%' OR toi_disposition LIKE '%CP%'
+        ORDER BY toi_id
+        """.strip()
+
+        try:
+            df = await self._fetch_tap(query, limit)
+            if df is None:
+                return None
+            
+            # Map TOI columns to standard format
+            column_mapping = {
+                'toi_id': 'pl_name',
+                'tid': 'hostname'
+            }
+            
+            # Rename columns if they exist
+            for old_col, new_col in column_mapping.items():
+                if old_col in df.columns and new_col not in df.columns:
+                    df = df.rename(columns={old_col: new_col})
+            
+            df = self._clean_planet_data(df)
+            df["data_source"] = "TESS_TOI"
+            df["exoplanet_type"] = df.apply(self._classify_exoplanet, axis=1)
+            logger.info(f"✅ Loaded {len(df)} TESS Objects of Interest.")
+            return df
+            
+        except Exception as e:
+            logger.error(f"Error loading TESS TOI: {e}")
+            return None
 
     async def load_planetary_systems(self, limit: int = 2000) -> Optional[pd.DataFrame]:
         """Load planetary systems composite (tested query)."""
@@ -222,8 +260,10 @@ class NASADataLoader:
         query = f"""
         SELECT TOP {limit}
             pl_name, hostname, pl_rade, pl_masse, pl_orbper, pl_orbsmax,
-            pl_orbeccen, pl_eqt, st_rad, st_mass, st_teff, st_met, st_logg,
-            sy_dist, disc_year, disc_facility
+            pl_orbeccen, pl_eqt, pl_insol, pl_dens, st_rad, st_mass, 
+            st_teff, st_met, st_logg, st_age, sy_dist, sy_vmag, sy_kmag,
+            disc_year, disc_facility, disc_telescope, disc_instrument,
+            pl_controv_flag, pl_refname
         FROM pscomppars
         WHERE pl_name IS NOT NULL AND default_flag = 1
         ORDER BY pl_name
@@ -268,7 +308,7 @@ class NASADataLoader:
             tasks = [
                 self.load_kepler_confirmed_planets(limit),
                 self.load_kepler_koi_cumulative(limit),
-                self.load_tess_confirmed_planets(limit),
+                self.load_tess_toi(limit),
                 self.load_planetary_systems(limit)
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)

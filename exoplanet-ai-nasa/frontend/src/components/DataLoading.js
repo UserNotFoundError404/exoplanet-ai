@@ -13,7 +13,12 @@ import {
 import { dataAPI, CONSTANTS } from '../services/api';
 
 const DataLoading = () => {
-  const [selectedSources, setSelectedSources] = useState(['Kepler Confirmed Planets', 'TESS Objects of Interest']);
+  const [selectedSources, setSelectedSources] = useState([
+    'Kepler Confirmed Planets',
+    'Kepler KOI Cumulative', 
+    'TESS Objects of Interest',
+    'Planetary Systems Composite'
+  ]);
   const [limitPerSource, setLimitPerSource] = useState(2000);
   const [includeLightCurves, setIncludeLightCurves] = useState(false);
   const [includeTransitData, setIncludeTransitData] = useState(false);
@@ -28,6 +33,14 @@ const DataLoading = () => {
     } else {
       setSelectedSources([...selectedSources, source]);
     }
+  };
+
+  const handleSelectAll = () => {
+    setSelectedSources([...CONSTANTS.DATA_SOURCES]);
+  };
+
+  const handleClearAll = () => {
+    setSelectedSources([]);
   };
 
   const handleLoadData = async () => {
@@ -182,9 +195,36 @@ const DataLoading = () => {
         {/* Data Sources Selection */}
         <div className="lg:col-span-2">
           <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Select Data Sources
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Select Data Sources
+              </h3>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleSelectAll}
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={handleClearAll}
+                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+            
+            {selectedSources.length === CONSTANTS.DATA_SOURCES.length && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                  <span className="text-sm text-green-800 font-medium">
+                    All NASA datasets selected for comprehensive analysis
+                  </span>
+                </div>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {CONSTANTS.DATA_SOURCES.map((source) => (
